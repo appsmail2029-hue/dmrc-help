@@ -228,6 +228,7 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
                 _currentStation.value = stn
                 soundManager.stopAlarm()
                 _activeAlarmRequest.value = null
+                _activeBroadcastNotice.value = null
             }
             auditDao.insertLog(
                 AuditLog(
@@ -244,6 +245,7 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
         soundManager.stopAlarm()
         _activeAlarmRequest.value = null
         _activeBroadcastNotice.value = null
+        dismissedNoticeIds.clear()
         _isLoggedIn.value = false
         _isAdminMode.value = false
         _currentStation.value = null

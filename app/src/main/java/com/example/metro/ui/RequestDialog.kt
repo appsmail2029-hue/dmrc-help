@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -108,7 +109,10 @@ fun RequestDialog(
         cursorColor = MetroPink
     )
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = {
+        destExpanded = false
+        onDismiss()
+    }) {
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -252,7 +256,8 @@ fun RequestDialog(
                     )
                     ExposedDropdownMenu(
                         expanded = destExpanded,
-                        onDismissRequest = { destExpanded = false }
+                        onDismissRequest = { destExpanded = false },
+                        modifier = Modifier.heightIn(max = 240.dp)
                     ) {
                         candidateDestinations.forEach { stn ->
                             DropdownMenuItem(
