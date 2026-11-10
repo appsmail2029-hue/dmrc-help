@@ -103,10 +103,45 @@ fun DashboardScreen(
     onAcknowledgeNotice: (String) -> Unit,
     onOpenAdminPanel: () -> Unit,
     onOpenDemoGuide: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onAdvanceTrain: (String) -> Unit = {}
 ) {
     var selectedFilterTab by remember { mutableIntStateOf(0) }
     var stationMenuExpanded by remember { mutableStateOf(false) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutConfirmDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showLogoutConfirmDialog = false },
+            title = {
+                Text(
+                    text = "Confirm Station Logout",
+                    fontWeight = FontWeight.Bold,
+                    color = MetroNavy
+                )
+            },
+            text = {
+                Text("Are you sure you want to log out from ${currentStation.stationName} (${currentStation.stationCode})? Any active alarms will be silenced.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutConfirmDialog = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AlarmRed),
+                    modifier = Modifier.testTag("confirm_logout_action")
+                ) {
+                    Text("Logout", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showLogoutConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     val filterTabs = listOf(
         "Incoming (${requests.count { it.destinationStationCode == currentStation.stationCode && it.status != RequestStatus.COMPLETED.name }})",
@@ -226,9 +261,17 @@ fun DashboardScreen(
                             Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin", tint = Color.White)
                         }
 
-                        // Logout
-                        IconButton(onClick = onLogout, modifier = Modifier.testTag("logout_button")) {
-                            Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color(0xFFFDA4AF))
+                        // Prominent Logout Option
+                        Button(
+                            onClick = { showLogoutConfirmDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBE123C)),
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .testTag("logout_button")
+                        ) {
+                            Icon(Icons.Default.Logout, contentDescription = "Logout", modifier = Modifier.size(16.dp), tint = Color.White)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Logout", style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -462,6 +505,7 @@ fun DashboardScreen(
                             onAcknowledge = { onAcknowledgeRequest(req.id) },
                             onMarkDeparted = { onMarkTrainDeparted(req.id) },
                             onUpdateLocation = { onOpenLocationDialog(req) },
+                            onAdvanceTrain = { onAdvanceTrain(req.id) },
                             onMarkCompleted = { onMarkAssistanceProvided(req.id) }
                         )
                     }
@@ -575,6 +619,7 @@ private fun RequestCard(
     onAcknowledge: () -> Unit,
     onMarkDeparted: () -> Unit,
     onUpdateLocation: () -> Unit,
+    onAdvanceTrain: () -> Unit,
     onMarkCompleted: () -> Unit
 ) {
     val isDestinationStation = (request.destinationStationCode == currentStation.stationCode)
@@ -702,32 +747,6 @@ private fun RequestCard(
                 color = Color(0xFF64748B)
             )
 
-            // Current Location & ETA
-            if (request.currentStationName != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Current Train Location: ",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF475569)
-                    )
-                    Text(
-                        text = request.currentStationName,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isApproaching) AlarmRed else SuccessGreen
-                    )
-                    request.currentRemainingStations?.let { rem ->
-                        Text(
-                            text = " ($rem stations away • ETA ~${rem * 3} min)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (rem == 3) AlarmRed else Color(0xFF64748B),
-                            fontWeight = if (rem == 3) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-
             if (request.specialNotes.isNotBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -735,6 +754,99 @@ private fun RequestCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF0F766E)
                 )
+            }
+
+            // Train Tracking Panel (Average 03:00 min / station)
+            if ((isDeparted || isApproaching) && !isCompleted) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val rem = request.currentRemainingStations ?: 0
+                Surface(
+                    color = if (isApproaching) Color(0xFFFFCDD2).copy(alpha = 0.5f) else Color(0xFFF0FDF4),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isApproaching) AlarmRed else Color(0xFF86EFAC)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.DirectionsSubway,
+                                    contentDescription = null,
+                                    tint = if (isApproaching) AlarmRed else SuccessGreen,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "TRAIN TRACKING (Avg 03:00 min/stn)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isApproaching) AlarmRed else Color(0xFF166534)
+                                )
+                            }
+                            Text(
+                                text = "Next Stn: in ~03:00 min",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isApproaching) AlarmRed else Color(0xFF15803D)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Current Train Location: ${request.currentStationName ?: request.boardingStationName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MetroNavy
+                        )
+                        Text(
+                            text = "$rem stations remaining to destination • Total ETA: ~${rem * 3} min",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (rem == 3) AlarmRed else Color(0xFF475569),
+                            fontWeight = if (rem == 3) FontWeight.Bold else FontWeight.Normal
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onAdvanceTrain,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isApproaching) AlarmRed else Color(0xFF0F766E)
+                                ),
+                                modifier = Modifier
+                                    .weight(1.2f)
+                                    .testTag("advance_train_${request.id}")
+                            ) {
+                                Text(
+                                    text = "⚡ Advance Next Stn (+3m)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = onUpdateLocation,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("update_location_button_${request.id}")
+                            ) {
+                                Text(
+                                    text = "Route Tracker",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Action Buttons based on station role & status
@@ -762,16 +874,6 @@ private fun RequestCard(
                         modifier = Modifier.testTag("train_departed_button_${request.id}")
                     ) {
                         Text("TRAIN DEPARTED")
-                    }
-                }
-
-                // Update Train Location button for boarding station (or transit)
-                if (isBoardingStation && (isDeparted || isApproaching) && !isCompleted) {
-                    OutlinedButton(
-                        onClick = onUpdateLocation,
-                        modifier = Modifier.testTag("update_location_button_${request.id}")
-                    ) {
-                        Text("UPDATE TRAIN LOCATION")
                     }
                 }
 

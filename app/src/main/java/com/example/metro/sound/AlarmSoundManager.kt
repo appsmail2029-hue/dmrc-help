@@ -37,12 +37,24 @@ class AlarmSoundManager(private val context: Context) {
         if (!isSoundEnabled) return
         stopAlarm()
 
+        // Elevate alarm stream volume to maximum
+        try {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            audioManager?.let { am ->
+                val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+                am.setStreamVolume(AudioManager.STREAM_ALARM, maxVol, 0)
+            }
+        } catch (e: Exception) {
+            // Ignore volume adjustment restrictions gracefully
+        }
+
         alarmJob = scope.launch {
             try {
                 val sampleRate = 44100
+                // High priority: piercing 960Hz & 1440Hz alternation; Normal/Broadcast: 880Hz & 1174Hz
                 val lowFreq = if (isHighPriority) 960.0 else 880.0
-                val highFreq = if (isHighPriority) 1320.0 else 1050.0
-                val toneDurationMs = if (isHighPriority) 180 else 280
+                val highFreq = if (isHighPriority) 1440.0 else 1174.66
+                val toneDurationMs = if (isHighPriority) 160 else 240
 
                 val bufferSize = AudioTrack.getMinBufferSize(
                     sampleRate,
@@ -80,6 +92,9 @@ class AlarmSoundManager(private val context: Context) {
                     )
                 }
 
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    audioTrack.setVolume(1.0f)
+                }
                 audioTrack.play()
 
                 // Trigger vibration
@@ -94,13 +109,13 @@ class AlarmSoundManager(private val context: Context) {
                     val generatedSnd = ShortArray(numSamples)
                     for (i in 0 until numSamples) {
                         val angle = 2.0 * Math.PI * i / (sampleRate / freq)
-                        // Sine wave with slight amplitude modulation for urgency
-                        val sample = (sin(angle) * Short.MAX_VALUE * 0.75).toInt().toShort()
+                        // Maximized sine wave amplitude (0.98 of Short.MAX_VALUE) for high volume alarm
+                        val sample = (sin(angle) * Short.MAX_VALUE * 0.98).toInt().toShort()
                         generatedSnd[i] = sample
                     }
 
                     audioTrack.write(generatedSnd, 0, generatedSnd.size)
-                    delay(toneDurationMs.toLong() + 30L)
+                    delay(toneDurationMs.toLong() + 20L)
                 }
 
                 audioTrack.stop()

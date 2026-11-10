@@ -107,7 +107,8 @@ fun MetroApp(viewModel: MetroViewModel = viewModel()) {
                 onAcknowledgeNotice = { noticeId -> viewModel.acknowledgeNotice(noticeId) },
                 onOpenAdminPanel = { showAdminPanel = true },
                 onOpenDemoGuide = { showDemoGuide = true },
-                onLogout = { viewModel.logout() }
+                onLogout = { viewModel.logout() },
+                onAdvanceTrain = { reqId -> viewModel.advanceTrainToNextStation(reqId) }
             )
         }
 

@@ -125,7 +125,42 @@ fun TrainLocationDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 3-Minute Average Train Tracking Banner
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.DirectionsSubway,
+                            contentDescription = null,
+                            tint = Color(0xFF1D4ED8),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "TRAIN TRACKING (AVERAGE 03:00 MIN / STATION)",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1E40AF)
+                            )
+                            Text(
+                                text = "Train reaches each subsequent station in ~3 minutes. Destination ETA is dynamically computed.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF1E3A8A)
+                            )
+                        }
+                    }
+                }
 
                 // Alert when 3 stations away
                 if (isThreeStationWarning) {
@@ -155,7 +190,7 @@ fun TrainLocationDialog(
                                     color = AlarmRed
                                 )
                                 Text(
-                                    text = "Selecting this station will trigger the automatic 2nd Audible Alarm at ${request.destinationStationName} (ETA ~9 min)",
+                                    text = "Selecting this station triggers the automatic 2nd Audible Alarm at ${request.destinationStationName} (ETA ~9 min)",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = AlarmRed
                                 )
@@ -164,11 +199,17 @@ fun TrainLocationDialog(
                     }
                 }
 
-                Text(
-                    text = "Select Next Station (Forward Progression Only):",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Select Next Station (Forward Progression Only):",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(6.dp))
 

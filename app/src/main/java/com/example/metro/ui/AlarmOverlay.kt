@@ -126,6 +126,23 @@ fun AlarmOverlay(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    // High Volume Alarm Notification Banner
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isSecondAlarm) AlarmRed else MetroPink)
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "🔊 HIGH-VOLUME ALARM SOUNDING",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     if (isSecondAlarm) {
                         Text(
                             text = "TRAIN APPROACHING – PLEASE PREPARE FOR DIVYANGJAN ASSISTANCE.",
@@ -136,7 +153,7 @@ fun AlarmOverlay(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Train is exactly 3 stations before destination • ETA ~9 Minutes",
+                            text = "Train is exactly 3 stations before destination • ETA ~9 Minutes (3 min/station)",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF7F1D1D),
@@ -151,7 +168,7 @@ fun AlarmOverlay(
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            text = "Immediate Station Coordination Required",
+                            text = "Immediate Station Coordination Required • Audible Alarm Active",
                             style = MaterialTheme.typography.bodySmall,
                             color = MetroPink,
                             fontWeight = FontWeight.Bold
@@ -252,6 +269,23 @@ fun AlarmOverlay(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // High Volume Alarm Notification Banner
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MetroYellowDark)
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "🔊 HIGH-VOLUME ALARM • ALL STATIONS ALERT",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Text(
                         text = "NETWORK BROADCAST ALERT",
                         style = MaterialTheme.typography.titleLarge,
@@ -259,10 +293,15 @@ fun AlarmOverlay(
                         color = MetroNavy
                     )
                     Text(
-                        text = broadcastNotice.category,
+                        text = "Category: ${broadcastNotice.category}",
                         style = MaterialTheme.typography.labelLarge,
                         color = MetroYellowDark,
                         fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Dispatched simultaneously to all 38 Pink Line stations",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF64748B)
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))

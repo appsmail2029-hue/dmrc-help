@@ -73,6 +73,8 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
     private val _activeBroadcastNotice = MutableStateFlow<OtherInformation?>(null)
     val activeBroadcastNotice: StateFlow<OtherInformation?> = _activeBroadcastNotice.asStateFlow()
 
+    private val dismissedNoticeIds = mutableSetOf<String>()
+
     // Reactive DB streams
     val allStations: StateFlow<List<Station>> = stationDao.getAllStationsFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -109,7 +111,7 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Monitor incoming requests and 3-station alerts for the currently logged-in station
+        // Monitor incoming requests and 3-station alerts for the destination station
         viewModelScope.launch {
             combine(allRequests, _currentStation) { reqs, currentStn ->
                 Pair(reqs, currentStn)
@@ -133,6 +135,25 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
                         _activeAlarmRequest.value = targetAlert
                         val isHighPriority = targetAlert.status == RequestStatus.APPROACHING_3_STATION.name
                         soundManager.startAlarm(isHighPriority = isHighPriority)
+                    }
+                }
+            }
+        }
+
+        // Monitor network-wide broadcast notices ("Other Information") for ALL stations with alarm and popup
+        viewModelScope.launch {
+            combine(allNotices, _currentStation) { notes, currentStn ->
+                Pair(notes, currentStn)
+            }.collect { (notes, currentStn) ->
+                if (currentStn != null) {
+                    // Find an active open notice that has not been dismissed in this session
+                    val unhandledNotice = notes.find { notice ->
+                        !notice.isClosed && !dismissedNoticeIds.contains(notice.id)
+                    }
+
+                    if (unhandledNotice != null && _activeBroadcastNotice.value?.id != unhandledNotice.id && _activeAlarmRequest.value == null) {
+                        _activeBroadcastNotice.value = unhandledNotice
+                        soundManager.startAlarm(isHighPriority = false)
                     }
                 }
             }
@@ -251,6 +272,9 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
 
     fun silenceAlarm() {
         soundManager.stopAlarm()
+        _activeBroadcastNotice.value?.let { notice ->
+            dismissedNoticeIds.add(notice.id)
+        }
         _activeAlarmRequest.value = null
         _activeBroadcastNotice.value = null
     }
@@ -456,7 +480,7 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Other Information (Broadcast Notice)
+    // Other Information (Broadcast Notice across ALL stations with alarm and modal popup)
     fun createBroadcastNotice(category: String, description: String, locationDetails: String = "") {
         val stn = _currentStation.value ?: return
         viewModelScope.launch(Dispatchers.IO) {
@@ -482,8 +506,10 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             withContext(Dispatchers.Main) {
+                // Remove from dismissed list so that all stations trigger alarm and popup
+                dismissedNoticeIds.remove(infoId)
                 _activeBroadcastNotice.value = notice
-                soundManager.playSingleChime()
+                soundManager.startAlarm(isHighPriority = false)
             }
         }
     }
@@ -499,10 +525,37 @@ class MetroViewModel(application: Application) : AndroidViewModel(application) {
             )
             otherInfoDao.insertAck(ack)
             withContext(Dispatchers.Main) {
+                dismissedNoticeIds.add(infoId)
                 if (_activeBroadcastNotice.value?.id == infoId) {
                     _activeBroadcastNotice.value = null
+                    soundManager.stopAlarm()
                 }
             }
+        }
+    }
+
+    // Train Tracking: Advance train station-by-station based on ~3 min average transit time
+    fun advanceTrainToNextStation(requestId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val req = requestDao.getRequestById(requestId) ?: return@launch
+            val allStns = stationDao.getAllStationsList()
+            val route = RouteEngine.calculateRoute(
+                allStations = allStns,
+                boardingCode = req.boardingStationCode,
+                destinationCode = req.destinationStationCode,
+                direction = req.circularDirection
+            )
+            if (route.isEmpty()) return@launch
+
+            val currIdx = if (req.currentStationCode != null) {
+                val idx = route.indexOfFirst { it.stationCode == req.currentStationCode }
+                if (idx == -1) 0 else idx
+            } else 0
+
+            val nextIdx = (currIdx + 1).coerceAtMost(route.size - 1)
+            val nextStation = route[nextIdx]
+
+            updateTrainLocation(requestId, nextStation.stationCode)
         }
     }
 
