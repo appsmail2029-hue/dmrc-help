@@ -1,0 +1,6 @@
+{
+  "name": "Metro Assist",
+  "description": "Delhi Metro Divyangjan Assistance & Pink Line Station Inter-Communication System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
